@@ -27,13 +27,17 @@ traceroute_bin = "/bin/traceroute-suid"
 
 @app.route("/")
 def icanhazafunction():
+    if request.headers.getlist("X-Forwarded-For"):
+        ip = request.headers.getlist("X-Forwarded-For")[0]
+    else:
+        ip = request.remote_addr
     if 'icanhazptr' in request.host:
         # The request is for *.icanhazptr.com
         try:
-            output = socket.gethostbyaddr(request.remote_addr)
+            output = socket.gethostbyaddr(ip)
             result = output[0]
         except:
-            result = request.remote_addr
+            result = ip
     elif 'icanhazepoch' in request.host:
         epoch_time = int(time.time())
         result = epoch_time
@@ -41,25 +45,25 @@ def icanhazafunction():
         # The request is for *.icanhaztraceroute.com
         valid_ip = False
         try:
-            socket.inet_pton(socket.AF_INET, request.remote_addr)
+            socket.inet_pton(socket.AF_INET, ip)
             valid_ip = True
         except socket.error:
             pass
         try:
-            socket.inet_pton(socket.AF_INET6, request.remote_addr)
+            socket.inet_pton(socket.AF_INET6, ip)
             valid_ip = True
         except socket.error:
             pass
         if valid_ip:
             tracecmd = shlex.split("%s -q 1 -f 2 -w 1 -n %s" %
-                (traceroute_bin, request.remote_addr))
+                (traceroute_bin, ip))
             result = subprocess.Popen(tracecmd,
                 stdout=subprocess.PIPE).communicate()[0].strip()
         else:
-            result = request.remote_addr
+            result = ip
     else:
         # The request is for *.icanhazip.com or something we don't recognize
-        result = request.remote_addr
+        result = ip
     return "%s\n" % result
 
 if __name__ == "__main__":
